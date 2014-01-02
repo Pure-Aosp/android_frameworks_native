@@ -646,6 +646,14 @@ status_t ScreenshotClient::capture(
         uint32_t minLayerZ, uint32_t maxLayerZ) {
     sp<ISurfaceComposer> s(ComposerService::getComposerService());
     if (s == NULL) return NO_INIT;
+#ifdef USE_MHEAP_SCREENSHOT
+    int format = 0;
+    producer->query(NATIVE_WINDOW_FORMAT,&format);
+    if (format == PIXEL_FORMAT_RGBA_8888) {
+        /* For some reason, this format fails badly */
+        return BAD_VALUE;
+    }
+#endif
     return s->captureScreen(display, producer,
             reqWidth, reqHeight, minLayerZ, maxLayerZ,
             false);
@@ -674,6 +682,19 @@ status_t ScreenshotClient::update(const sp<IBinder>& display,
         uint32_t minLayerZ, uint32_t maxLayerZ) {
     sp<ISurfaceComposer> s(ComposerService::getComposerService());
     if (s == NULL) return NO_INIT;
+#ifdef USE_MHEAP_SCREENSHOT
+    int ret = -1;
+    mHeap = 0;
+    ret = s->captureScreen(display, &mHeap,
+            &mBuffer.width, &mBuffer.height, reqWidth, reqHeight,
+            minLayerZ, maxLayerZ);
+    if (ret == NO_ERROR) {
+        mBuffer.format = PIXEL_FORMAT_RGBA_8888;
+        mBuffer.stride = mBuffer.width;
+        mBuffer.data = (uint8_t *)mHeap->getBase();
+    }
+    return ret;
+#else
     sp<CpuConsumer> cpuConsumer = getCpuConsumer();
 
     if (mHaveBuffer) {
@@ -692,6 +713,7 @@ status_t ScreenshotClient::update(const sp<IBinder>& display,
         }
     }
     return err;
+#endif
 }
 
 status_t ScreenshotClient::update(const sp<IBinder>& display) {
@@ -704,12 +726,16 @@ status_t ScreenshotClient::update(const sp<IBinder>& display,
 }
 
 void ScreenshotClient::release() {
+#ifdef USE_MHEAP_SCREENSHOT
+    mHeap = 0;
+#else
     if (mHaveBuffer) {
         mCpuConsumer->unlockBuffer(mBuffer);
         memset(&mBuffer, 0, sizeof(mBuffer));
         mHaveBuffer = false;
     }
     mCpuConsumer.clear();
+#endif
 }
 
 void const* ScreenshotClient::getPixels() const {

@@ -39,12 +39,23 @@ LOCAL_SHARED_LIBRARIES := \
 	libutils \
 	liblog
 
+ifeq ($(call is-board-platform-in-list, mpq8092), true)
+    LOCAL_CFLAGS            += -DVFM_AVAILABLE
+endif
 
 ifeq ($(BOARD_EGL_NEEDS_LEGACY_FB),true)
     LOCAL_CFLAGS += -DBOARD_EGL_NEEDS_LEGACY_FB
     ifneq ($(TARGET_BOARD_PLATFORM),exynos4)
         LOCAL_CFLAGS += -DSURFACE_SKIP_FIRST_DEQUEUE
     endif
+endif
+
+ifeq ($(BOARD_EGL_SKIP_FIRST_DEQUEUE),true)
+    LOCAL_CFLAGS += -DSURFACE_SKIP_FIRST_DEQUEUE
+endif
+
+ifeq ($(BOARD_USE_MHEAP_SCREENSHOT),true)
+    LOCAL_CFLAGS += -DUSE_MHEAP_SCREENSHOT
 endif
 
 LOCAL_MODULE:= libgui
