@@ -740,10 +740,19 @@ status_t SurfaceFlinger::getDisplayInfo(const sp<IBinder>& display, DisplayInfo*
         info->orientation = 0;
     }
 
-    info->w = hwc.getWidth(type);
-    info->h = hwc.getHeight(type);
-    info->xdpi = xdpi;
-    info->ydpi = ydpi;
+    int additionalRot = mDisplays[0]->getHardwareOrientation() / 90;
+    if ((type == DisplayDevice::DISPLAY_PRIMARY) && (additionalRot & DisplayState::eOrientationSwapMask)) {
+        info->h = hwc.getWidth(type);
+        info->w = hwc.getHeight(type);
+        info->xdpi = ydpi;
+        info->ydpi = xdpi;
+    }
+    else {
+        info->w = hwc.getWidth(type);
+        info->h = hwc.getHeight(type);
+        info->xdpi = xdpi;
+        info->ydpi = ydpi;
+    }
     info->fps = float(1e9 / hwc.getRefreshPeriod(type));
 
     // All non-virtual displays are currently considered secure.
